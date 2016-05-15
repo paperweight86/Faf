@@ -8,7 +8,7 @@ using namespace str;
 
 #include <map>
 
-#include "..\ext\rapidxml-1.13\rapidxml.hpp"
+#include "rapidxml.hpp"
 using namespace rapidxml;
 
 #include <errno.h>
@@ -58,38 +58,6 @@ namespace svg
 		// A, a
 		svg_op_elarc_abs = 'A',
 		svg_op_elarc_rel = 'a',
-	};
-
-	static const std::map<const char, svg_path_opname> pathOps = {
-		{ 'M', svg_op_move_abs },
-		{ 'm', svg_op_move_rel },
-
-		{ 'Z', svg_op_close },
-		{ 'z', svg_op_close },
-
-		{ 'L', svg_op_line_abs },
-		{ 'l', svg_op_line_rel },
-
-		{ 'H', svg_op_hline_abs },
-		{ 'h', svg_op_hline_rel },
-
-		{ 'V', svg_op_vline_abs },
-		{ 'v', svg_op_vline_rel },
-
-		{ 'C', svg_op_cbezier_abs },
-		{ 'c', svg_op_cbezier_rel },
-
-		{ 'S', svg_op_scbezier_abs },
-		{ 's', svg_op_scbezier_rel },
-
-		{ 'Q', svg_op_qbezier_abs },
-		{ 'q', svg_op_qbezier_rel },
-
-		{ 'T', svg_op_sqbezier_abs },
-		{ 't', svg_op_sqbezier_rel },
-
-		{ 'A', svg_op_elarc_abs },
-		{ 'a', svg_op_elarc_rel },
 	};
 
 	const char opChars[] = { 'M','m','Z','z','L','l','H','h','V','v','C','c','S','s','Q','q','T','t','A','a' };
@@ -253,9 +221,7 @@ namespace svg
 
 			while (dataPos != std::string::npos)
 			{
-				auto opFindIter = pathOps.find(strData[dataPos]);
-
-				svg_path_opname op = (*opFindIter).second;
+				svg_path_opname op = (svg_path_opname)strData[dataPos];
 
 				p = 0;
 				size_t off = dataPos + 1;
