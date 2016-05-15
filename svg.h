@@ -23,6 +23,7 @@ namespace svg
 
 		// End of ops
 		svg_op_close = 'Z',
+		svg_op_close_alt = 'z',
 
 		// Line
 		svg_op_line_abs = 'L',
