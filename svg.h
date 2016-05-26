@@ -90,7 +90,7 @@ namespace svg
 	bool load_svg_file( tstr filepath, svg_document** doc_out)
 	{
 		assert((*doc_out) == nullptr);
-		// TODO: arrrrrrr don't alloc here
+		// TODO: arrrrrrr don't alloc here?!
 		(*doc_out) = new svg_document();
 
 		auto doc = (*doc_out);
@@ -135,7 +135,6 @@ namespace svg
 		}
 
 		// Read the view port
-		// TODO: sometimes absent use <svg width="..." height="..." instead 
 		auto viewBoxAtt = root->first_attribute("viewBox");
 
 		if (viewBoxAtt != nullptr)
