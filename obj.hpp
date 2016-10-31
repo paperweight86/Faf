@@ -466,6 +466,7 @@ namespace obj
 				}
 			}
 			cur_obj->indices[i] = cur_face.pos;
+			cur_ver_idx = cur_face.pos;
 
 			if (!already_added)
 			{
