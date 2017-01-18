@@ -25,17 +25,8 @@ namespace obj
 		uti::u32*	indices;
 		uti::u32	num_indices;
 
-		//float*		normals;
-		//uti::u32	num_normals;
-
-		//float*		texcoords;
-		//uti::u32	num_texcoords;
-
 		char		material_name[MAX_OBJ_MDL_NAME];
 		bool		smooth;
-
-		//face*		faces;
-		//uti::u32	num_faces;
 	};
 
 	struct document
@@ -83,177 +74,6 @@ namespace obj
 
 	bool load_obj(char* data, uti::u32 len_data, document* doc)
 	{
-		//uti::u32 vertices_start = 0;
-		//uti::u32 num_vertices = 0;
-		//uti::u32 normals_start = 0;
-		//uti::u32 num_normals = 0;
-		//uti::u32 faces_start = 0;
-		//uti::u32 num_faces = 0;
-		//uti::u32 data_pos = 0;
-		//bool	 smooth = true;
-		//line_type cur_line_type = line_type_none;
-		//while (data_pos < len_data)
-		//{
-		//	// TODO: Skip space
-		//	size_t line_end_off = str::find_char(data + data_pos, '\n', len_data- data_pos);
-		//	if (line_end_off > len_data || data_pos + line_end_off > len_data)
-		//	{
-		//		data_pos = u32_max;
-		//		break;
-		//	}
-		//	// Go past the \n
-		//	line_end_off += 1;
-		//	cur_line_type = determine_line_type(data + data_pos, line_end_off);
-		//	switch (cur_line_type)
-		//	{
-		//	case line_type_vertex:
-		//		if(vertices_start == 0)
-		//			vertices_start = data_pos;
-		//		++num_vertices;
-		//		data_pos += line_end_off;
-		//		break;
-		//	case line_type_normal:
-		//		if(normals_start == 0)
-		//			normals_start = data_pos;
-		//		++num_normals;
-		//		data_pos += line_end_off;
-		//		break;
-		//	case line_type_face:
-		//		if(faces_start == 0)
-		//			faces_start = data_pos;
-		//		++num_faces;
-		//		data_pos += line_end_off;
-		//		break;
-		//	case line_type_smooth:
-		//	{
-		//		data_pos += 1;
-		//		line_end_off -= 1;
-		//		size_t start_smooth_off = str::find_not_char(data + data_pos, ' ', line_end_off);
-		//		if (line_end_off - start_smooth_off >= 2)
-		//		{
-		//			if (strncmp("off", data + data_pos + start_smooth_off, 3) == 0)
-		//				smooth = false;
-		//		}
-		//		data_pos += line_end_off;
-		//	}
-		//		break;
-		//	case line_type_comment:
-		//	case line_type_none:
-		//	default:
-		//		data_pos += line_end_off;
-		//		break;
-		//	}
-		//}
-
-		//doc->objects = new object();
-		//doc->num_objects = 1;
-
-		//object* cur_obj = doc->objects;
-
-		//cur_obj->smooth = smooth;
-
-		//cur_obj->vertices = new float[num_vertices * 3];
-		//cur_obj->num_vertices = num_vertices;
-
-		//data_pos = vertices_start;
-		//for (int i = 0; i < num_vertices; ++i)
-		//{
-		//	const int float_buffer_len = 32;
-		//	char float_buffer[float_buffer_len] = {};
-		//	float* cur_vert = cur_obj->vertices + i*3;
-		//	size_t off_to_float = str::strOffToNextFloat(data + data_pos);
-		//	size_t off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
-		//	memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-		//	cur_vert[0] = atof(float_buffer);
-
-		//	data_pos += off_to_float + off_to_end_float;
-		//	memset(float_buffer, 0, float_buffer_len);
-
-		//	off_to_float = str::strOffToNextFloat(data + data_pos);
-		//	off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
-		//	memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-		//	cur_vert[1] = atof(float_buffer);
-
-		//	data_pos += off_to_float + off_to_end_float;
-
-		//	off_to_float = str::strOffToNextFloat(data + data_pos);
-		//	off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
-		//	memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-		//	cur_vert[2] = atof(float_buffer);
-
-		//	data_pos += off_to_float + off_to_end_float;
-		//}
-
-		//cur_obj->normals = new float[num_normals];
-		//cur_obj->num_normals = num_normals;
-
-		//data_pos = normals_start;
-		//for (int i = 0; i < num_normals; ++i)
-		//{
-		//	const int float_buffer_len = 32;
-		//	char float_buffer[float_buffer_len] = {};
-		//	float* cur_norm = cur_obj->normals + i*3;
-		//	size_t off_to_float = str::strOffToNextFloat(data + data_pos);
-		//	size_t off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
-		//	memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-		//	cur_norm[0] = atof(float_buffer);
-
-		//	data_pos += off_to_float + off_to_end_float;
-		//	memset(float_buffer, 0, float_buffer_len);
-
-		//	off_to_float = str::strOffToNextFloat(data + data_pos);
-		//	off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
-		//	memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-		//	cur_norm[1] = atof(float_buffer);
-
-		//	data_pos += off_to_float + off_to_end_float;
-
-		//	off_to_float = str::strOffToNextFloat(data + data_pos);
-		//	off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
-		//	memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-		//	cur_norm[2] = atof(float_buffer);
-
-		//	data_pos += off_to_float + off_to_end_float;
-		//}
-
-		//const int num_primative_verts = 3; // triangles only!
-		//cur_obj->faces = new face[num_faces*num_primative_verts];
-		//cur_obj->num_faces = num_faces;
-
-		//data_pos = faces_start;
-		//for (int i = 0; i < num_faces*num_primative_verts; ++i)
-		//{
-		//	const int str_int_buffer_len = 32;
-		//	char str_int_buffer[str_int_buffer_len] = {};
-		//	face* cur_face = cur_obj->faces + i;
-		//	size_t off_to_int	  = str::strOffToNextFloat(data + data_pos);
-		//	size_t off_to_end_int = str::find_char(data + data_pos + off_to_int, '/', len_data - (data_pos + off_to_int));
-		//	memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + off_to_int, off_to_end_int);
-		//	cur_face->pos = atoi(str_int_buffer);
-
-		//	data_pos += off_to_int + off_to_end_int + 1;
-		//	memset(str_int_buffer, 0, str_int_buffer_len);
-
-		//	off_to_end_int = str::find_char(data + data_pos, '/', len_data - data_pos);
-		//	if (off_to_end_int != 0)
-		//	{
-		//		memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos, off_to_end_int);
-		//		cur_face->tex = atoi(str_int_buffer);
-		//		data_pos += off_to_int + off_to_end_int;
-		//	}
-		//	else
-		//	{
-		//		cur_face->tex = 0;
-		//	}
-
-		//	off_to_int = str::strOffToNextFloat(data + data_pos);
-		//	off_to_end_int = str::strOffToEndFloat(data + data_pos + off_to_int);
-		//	memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + off_to_int, off_to_end_int);
-		//	cur_face->nrm = atoi(str_int_buffer);
-
-		//	data_pos += off_to_int + off_to_end_int;
-		//}
-
 		float*		positions = nullptr;
 		uti::u32    num_positions = 0;
 
@@ -463,9 +283,15 @@ namespace obj
 						if(num_texcoords != 0)
 							offsetToNorm += num_vertex_element_vals;
 						uti::u32 offset = cur_face.pos * num_vertex_element_vals * num_vertex_elements + num_vertex_element_vals;
-						cur_obj->vertices[offset]	+= cur_nrm[0];
-						cur_obj->vertices[offset+1] += cur_nrm[1];
-						cur_obj->vertices[offset+2] += cur_nrm[2];
+
+						uti::float4 nrm = uti::make( cur_obj->vertices[offset]	 + cur_nrm[0],
+													 cur_obj->vertices[offset+1] + cur_nrm[1],
+													 cur_obj->vertices[offset+2] + cur_nrm[2] );
+
+						nrm = uti::norm(nrm);
+						cur_obj->vertices[offset]	= uti::get_x(nrm);
+						cur_obj->vertices[offset+1] = uti::get_y(nrm);
+						cur_obj->vertices[offset+2] = uti::get_z(nrm);
 						already_added = true;
 						break;
 					}
