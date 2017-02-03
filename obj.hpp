@@ -8,7 +8,7 @@ namespace obj
 {
 	struct face
 	{
-		int pos, tex, nrm;
+		uti::u32  pos, tex, nrm;
 	};
 
 	struct object
@@ -59,7 +59,7 @@ namespace obj
 	#define OBJ_LINE_SMOOTH		"s "
 	#define OBJ_LINE_FACE		"f "
 
-	line_type determine_line_type(char* line, uti::i32 line_len)
+	line_type determine_line_type(char* line)
 	{
 		OBJ_LINE_RETURN_IF_TYPE(line, OBJ_LINE_COMMENT,		line_type_comment);
 		OBJ_LINE_RETURN_IF_TYPE(line, OBJ_LINE_OBJECT,		line_type_object);
@@ -72,7 +72,7 @@ namespace obj
 		return line_type_none;
 	}
 
-	bool load_obj(char* data, uti::u32 len_data, document* doc)
+	bool load_obj(char* data, uti::u64 len_data, document* doc)
 	{
 		float*		positions = nullptr;
 		uti::u32    num_positions = 0;
@@ -86,10 +86,11 @@ namespace obj
 		face*		faces = nullptr;
 		uti::u32	num_faces = 0;
 
-		uti::u32 vertices_start = 0;
-		uti::u32 normals_start = 0;
-		uti::u32 faces_start = 0;
-		uti::u32 data_pos = 0;
+		uti::u64 vertices_start = 0;
+		uti::u64 normals_start = 0;
+		uti::u64 texcoords_start = 0;
+		uti::u64 faces_start = 0;
+		uti::u64 data_pos = 0;
 		bool	 smooth = true;
 		line_type cur_line_type = line_type_none;
 		while (data_pos < len_data)
@@ -103,7 +104,8 @@ namespace obj
 			}
 			// Go past the \n
 			line_end_off += 1;
-			cur_line_type = determine_line_type(data + data_pos, line_end_off);
+			assert(line_end_off >= 2);
+			cur_line_type = determine_line_type(data + data_pos);
 			switch (cur_line_type)
 			{
 			case line_type_vertex:
@@ -116,6 +118,12 @@ namespace obj
 				if (normals_start == 0)
 					normals_start = data_pos;
 				++num_normals;
+				data_pos += line_end_off;
+				break;
+			case line_type_texcoord:
+				if (texcoords_start == 0)
+					texcoords_start = data_pos;
+				++num_texcoords;
 				data_pos += line_end_off;
 				break;
 			case line_type_face:
@@ -161,7 +169,7 @@ namespace obj
 		normals = new float[num_normals*num_vertex_element_vals];
 
 		data_pos = vertices_start;
-		for (int i = 0; i < num_positions; ++i)
+		for (uti::u32 i = 0; i < num_positions; ++i)
 		{
 			const int float_buffer_len = 32;
 			char float_buffer[float_buffer_len] = {};
@@ -169,7 +177,7 @@ namespace obj
 			size_t off_to_float = str::strOffToNextFloat(data + data_pos);
 			size_t off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
 			memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-			cur_vert[0] = atof(float_buffer);
+			cur_vert[0] = (float)atof(float_buffer);
 
 			data_pos += off_to_float + off_to_end_float;
 			memset(float_buffer, 0, float_buffer_len);
@@ -177,20 +185,20 @@ namespace obj
 			off_to_float = str::strOffToNextFloat(data + data_pos);
 			off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
 			memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-			cur_vert[1] = atof(float_buffer);
+			cur_vert[1] = (float)atof(float_buffer);
 
 			data_pos += off_to_float + off_to_end_float;
 
 			off_to_float = str::strOffToNextFloat(data + data_pos);
 			off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
 			memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-			cur_vert[2] = atof(float_buffer);
+			cur_vert[2] = (float)atof(float_buffer);
 
 			data_pos += off_to_float + off_to_end_float;
 		}
 
 		data_pos = normals_start;
-		for (int i = 0; i < num_normals; ++i)
+		for (uti::u32 i = 0; i < num_normals; ++i)
 		{
 			const int float_buffer_len = 32;
 			char float_buffer[float_buffer_len] = {};
@@ -198,7 +206,7 @@ namespace obj
 			size_t off_to_float = str::strOffToNextFloat(data + data_pos);
 			size_t off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
 			memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-			cur_norm[0] = atof(float_buffer);
+			cur_norm[0] = (float)atof(float_buffer);
 
 			data_pos += off_to_float + off_to_end_float;
 			memset(float_buffer, 0, float_buffer_len);
@@ -206,14 +214,14 @@ namespace obj
 			off_to_float = str::strOffToNextFloat(data + data_pos);
 			off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
 			memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-			cur_norm[1] = atof(float_buffer);
+			cur_norm[1] = (float)atof(float_buffer);
 
 			data_pos += off_to_float + off_to_end_float;
 
 			off_to_float = str::strOffToNextFloat(data + data_pos);
 			off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
 			memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-			cur_norm[2] = atof(float_buffer);
+			cur_norm[2] = (float)atof(float_buffer);
 
 			data_pos += off_to_float + off_to_end_float;
 		}
@@ -222,7 +230,7 @@ namespace obj
 		num_faces = num_faces*num_primative_verts;
 
 		data_pos = faces_start;
-		for (int i = 0; i < num_faces; ++i)
+		for (uti::u32  i = 0; i < num_faces; ++i)
 		{
 			const int str_int_buffer_len = 32;
 			char str_int_buffer[str_int_buffer_len] = {};
@@ -240,14 +248,15 @@ namespace obj
 			{
 				memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos, off_to_end_int);
 				cur_face->tex = atoi(str_int_buffer) - 1;
-				data_pos += off_to_int + off_to_end_int;
+				data_pos += off_to_end_int;
 			}
 			else
 			{
 				cur_face->tex = 0;
 			}
-
 			off_to_int = str::strOffToNextFloat(data + data_pos);
+			data_pos += off_to_int;
+
 			off_to_end_int = str::strOffToEndFloat(data + data_pos + off_to_int);
 			memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + off_to_int, off_to_end_int);
 			cur_face->nrm = atoi(str_int_buffer) - 1;
@@ -266,7 +275,7 @@ namespace obj
 			cur_obj->indices = new uti::u32[num_faces];
 			cur_obj->num_indices = num_faces;
 			int cur_ver_idx = 0;
-			for (int i = 0; i < num_faces; ++i)
+			for (uti::u32  i = 0; i < num_faces; ++i)
 			{
 				auto cur_face = faces[i];
 				float* cur_pos = positions + cur_face.pos * num_vertex_element_vals;
@@ -275,7 +284,7 @@ namespace obj
 
 				// TODO: [DanJ] just have an array of bools?
 				bool already_added = false;
-				for (int k = 0; k < i; ++k)
+				for (uti::u32 k = 0; k < i; ++k)
 				{
 					if (cur_obj->indices[k] == cur_face.pos)
 					{
@@ -330,7 +339,7 @@ namespace obj
 			cur_obj->indices = new uti::u32[num_faces];
 			cur_obj->num_indices = num_faces;
 			int cur_ver_idx = 0;
-			for (int i = 0; i < num_faces; ++i)
+			for (uti::u32  i = 0; i < num_faces; ++i)
 			{
 				auto cur_face = faces[i];
 				float* cur_pos = positions + cur_face.pos * num_vertex_element_vals;
@@ -344,7 +353,7 @@ namespace obj
 				offset += num_vertex_element_vals;
 				if (num_texcoords != 0)
 				{
-					memcpy_s(cur_obj->vertices + cur_ver_idx + num_vertex_element_vals, size_vertices,
+					memcpy_s(cur_obj->vertices + offset, size_vertices - offset,
 						cur_tex, num_vertex_element_vals * sizeof(float));
 					offset += num_vertex_element_vals;
 				}
@@ -363,7 +372,7 @@ namespace obj
 
 	void free_obj_buffers(document* doc)
 	{
-		for (int i = 0; i < doc->num_objects; ++i)
+		for (uti::u32 i = 0; i < doc->num_objects; ++i)
 		{
 			delete [] doc->objects[i].vertices;
 			doc->objects[i].num_vertices = 0;
