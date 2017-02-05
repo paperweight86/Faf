@@ -18,9 +18,7 @@ namespace obj
 		float*		vertices;
 		uti::u32	num_vertices;
 		uti::u32    num_vertex_floats;
-		uti::u32	position_offset;
-		uti::u32	normal_offset;
-		uti::u32	texcoord_offset;
+		bool		has_texcoords;
 
 		uti::u32*	indices;
 		uti::u32	num_indices;
@@ -235,33 +233,66 @@ namespace obj
 			const int str_int_buffer_len = 32;
 			char str_int_buffer[str_int_buffer_len] = {};
 			face* cur_face = faces + i;
-			size_t off_to_int = str::strOffToNextFloat(data + data_pos);
-			size_t off_to_end_int = str::find_char(data + data_pos + off_to_int, '/', len_data - (data_pos + off_to_int));
-			memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + off_to_int, off_to_end_int);
+			size_t to_int = str::strOffToNextFloat(data + data_pos);
+			size_t to_slash_1 = str::find_char(data + data_pos, '/', len_data - data_pos);
+			assert(to_slash_1 != UTI_FIND_CHAR_NOT_FOUND);
+			if (to_slash_1 == UTI_FIND_CHAR_NOT_FOUND)
+			{
+				// 1st slash is missing
+				// TODO: [DanJ] Report syntax is wrong / my shitty algorithm can't understand it
+
+				delete[] positions;
+				delete[] normals;
+				delete[] texcoords;
+
+				return false;
+			}
+
+			if (to_slash_1 < to_int)
+			{
+				// Position is missing
+				// TODO: [DanJ] Report syntax is wrong / my shitty algorithm can't understand it
+
+				delete[] positions;
+				delete[] normals;
+				delete[] texcoords;
+
+				return false;
+			}
+
+			size_t to_slash_2 = str::find_char(data + data_pos + to_slash_1 + 1, '/', len_data - (data_pos + to_slash_1 + 1));
+			assert(to_slash_2 != UTI_FIND_CHAR_NOT_FOUND);
+			if (to_slash_2 == UTI_FIND_CHAR_NOT_FOUND)
+			{
+				// 2nd slash is missing
+				// TODO: [DanJ] Report syntax is wrong / my shitty algorithm can't understand it
+
+				delete[] positions;
+				delete[] normals;
+				delete[] texcoords;
+
+				return false;
+			}
+
+			size_t to_space = str::find_char(data + data_pos + to_slash_1 + 1 + to_slash_2, ' ', len_data - (data_pos + to_slash_1 + 1 + to_slash_2));
+
+			size_t to_line_end = str::find_char(data + data_pos + to_slash_1 + 1 + to_slash_2, '\n', len_data - (data_pos + to_slash_1 + 1 + to_slash_2));
+
+			uti::u64 to_end_face = to_space < to_line_end ? to_space : to_line_end;
+
+			memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + to_int, to_slash_1 - to_int);
 			cur_face->pos = atoi(str_int_buffer) - 1;
 
-			data_pos += off_to_int + off_to_end_int + 1;
-			memset(str_int_buffer, 0, str_int_buffer_len);
-
-			off_to_end_int = str::find_char(data + data_pos, '/', len_data - data_pos);
-			if (off_to_end_int != 0)
+			if (to_slash_2 != 0)
 			{
-				memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos, off_to_end_int);
+				memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + to_slash_1 + 1, to_slash_2);
 				cur_face->tex = atoi(str_int_buffer) - 1;
-				data_pos += off_to_end_int;
 			}
-			else
-			{
-				cur_face->tex = 0;
-			}
-			off_to_int = str::strOffToNextFloat(data + data_pos);
-			data_pos += off_to_int;
 
-			off_to_end_int = str::strOffToEndFloat(data + data_pos + off_to_int);
-			memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + off_to_int, off_to_end_int);
+			memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + to_slash_1 + 1 + to_slash_2 + 1, to_end_face);
 			cur_face->nrm = atoi(str_int_buffer) - 1;
 
-			data_pos += off_to_int + off_to_end_int;
+			data_pos += to_slash_1 + 1 + to_slash_2 + 1 + to_end_face;
 		}
 
 		if (cur_obj->smooth)
@@ -314,14 +345,14 @@ namespace obj
 					memcpy_s(cur_obj->vertices + offset, size_vertices - (cur_ver_idx + offset),
 						cur_pos, num_vertex_element_vals * sizeof(float));
 					offset += num_vertex_element_vals;
-					if (num_texcoords != 0)
-					{
-						memcpy_s(cur_obj->vertices + cur_ver_idx + num_vertex_element_vals, size_vertices,
-							cur_tex, num_vertex_element_vals * sizeof(float));
-						offset += num_vertex_element_vals;
-					}
 					memcpy_s(cur_obj->vertices + offset, size_vertices - offset,
 						cur_nrm, num_vertex_element_vals * sizeof(float));
+					if (num_texcoords != 0)
+					{
+						offset += num_vertex_element_vals;
+						memcpy_s(cur_obj->vertices + cur_ver_idx + num_vertex_element_vals, size_vertices,
+							cur_tex, num_vertex_element_vals * sizeof(float));
+					}
 					++cur_ver_idx;
 				}
 			}
@@ -351,14 +382,14 @@ namespace obj
 				memcpy_s(cur_obj->vertices + offset, size_vertices - (cur_ver_idx + offset),
 					cur_pos, num_vertex_element_vals * sizeof(float));
 				offset += num_vertex_element_vals;
-				if (num_texcoords != 0)
-				{
-					memcpy_s(cur_obj->vertices + offset, size_vertices - offset,
-						cur_tex, num_vertex_element_vals * sizeof(float));
-					offset += num_vertex_element_vals;
-				}
 				memcpy_s(cur_obj->vertices + offset, size_vertices - offset,
 					cur_nrm, num_vertex_element_vals * sizeof(float));
+				if (num_texcoords != 0)
+				{
+					offset += num_vertex_element_vals;
+					memcpy_s(cur_obj->vertices + offset, size_vertices - offset,
+						cur_tex, num_vertex_element_vals * sizeof(float));
+				}
 				++cur_ver_idx;
 			}
 		}
@@ -366,6 +397,8 @@ namespace obj
 		delete[] positions;
 		delete[] normals;
 		delete[] texcoords;
+
+		doc->objects[0].has_texcoords = num_texcoords > 0;
 
 		return true;
 	}
