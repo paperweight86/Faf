@@ -224,6 +224,35 @@ namespace obj
 			data_pos += off_to_float + off_to_end_float;
 		}
 
+		data_pos = texcoords_start;
+		for (uti::u32 i = 0; i < num_texcoords; ++i)
+		{
+			const int float_buffer_len = 32;
+			char float_buffer[float_buffer_len] = {};
+			float* cur_tex = texcoords + i * 3;
+			size_t off_to_float = str::strOffToNextFloat(data + data_pos);
+			size_t off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
+			memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
+			cur_tex[0] = (float)atof(float_buffer);
+
+			data_pos += off_to_float + off_to_end_float;
+			memset(float_buffer, 0, float_buffer_len);
+
+			off_to_float = str::strOffToNextFloat(data + data_pos);
+			off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
+			memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
+			cur_tex[1] = (float)atof(float_buffer);
+
+			data_pos += off_to_float + off_to_end_float;
+
+			//off_to_float = str::strOffToNextFloat(data + data_pos);
+			//off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
+			//memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
+			cur_tex[2] = 0.0f;
+
+			//data_pos += off_to_float + off_to_end_float;
+		}
+
 		faces = new face[num_faces*num_primative_verts];
 		num_faces = num_faces*num_primative_verts;
 
