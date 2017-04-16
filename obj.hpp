@@ -264,8 +264,8 @@ namespace obj
 			face* cur_face = faces + i;
 			size_t to_int = str::strOffToNextFloat(data + data_pos);
 			size_t to_slash_1 = str::find_char(data + data_pos, '/', len_data - data_pos);
-			assert(to_slash_1 != UTI_FIND_CHAR_NOT_FOUND);
-			if (to_slash_1 == UTI_FIND_CHAR_NOT_FOUND)
+			assert(to_slash_1 != UTI_STR_FIND_NOT_FOUND);
+			if (to_slash_1 == UTI_STR_FIND_NOT_FOUND)
 			{
 				// 1st slash is missing
 				// TODO: [DanJ] Report syntax is wrong / my shitty algorithm can't understand it
@@ -290,8 +290,8 @@ namespace obj
 			}
 
 			size_t to_slash_2 = str::find_char(data + data_pos + to_slash_1 + 1, '/', len_data - (data_pos + to_slash_1 + 1));
-			assert(to_slash_2 != UTI_FIND_CHAR_NOT_FOUND);
-			if (to_slash_2 == UTI_FIND_CHAR_NOT_FOUND)
+			assert(to_slash_2 != UTI_STR_FIND_NOT_FOUND);
+			if (to_slash_2 == UTI_STR_FIND_NOT_FOUND)
 			{
 				// 2nd slash is missing
 				// TODO: [DanJ] Report syntax is wrong / my shitty algorithm can't understand it
