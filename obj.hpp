@@ -140,8 +140,13 @@ namespace obj
 		// this is space saving but a faff
 		uti::u32 positions_offset = 0;
 
+		uti::u32 max_last_pos_idx	= 1;
+		uti::u32 max_last_tex_idx	= 1;
+		uti::u32 max_last_norm_idx	= 1;
+
 		for (uti::u32 i = 0; i < pos_objects.count; ++i)
 		{
+
 			num_faces = 0;
 			vertices_start = 0;
 			faces_start = 0;
@@ -464,25 +469,32 @@ namespace obj
 					}
 
 					size_t to_space = str::find_char(data + data_pos + to_slash_1 + 1 + to_slash_2, ' ', len_data - (data_pos + to_slash_1 + 1 + to_slash_2));
+					to_space = min(to_space, len_data - (data_pos + to_slash_1 + 1 + to_slash_2));
 
 					size_t to_line_end = str::find_char(data + data_pos + to_slash_1 + 1 + to_slash_2, '\n', len_data - (data_pos + to_slash_1 + 1 + to_slash_2));
+					to_line_end = min(to_line_end, len_data - (data_pos + to_slash_1 + 1 + to_slash_2));
 
 					uti::u64 to_end_face = to_space < to_line_end ? to_space : to_line_end;
+					to_end_face = min(to_end_face, len_data - (data_pos + to_slash_1 + 1 + to_slash_2));
 
 					if (to_slash_1 != 0)
 					{
 						memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + to_int, to_slash_1 - to_int);
-						cur_face->pos = atoi(str_int_buffer) - 1;
+						cur_face->pos = atoi(str_int_buffer) - max_last_pos_idx;
 					}
+
+					memset(str_int_buffer, 0, str_int_buffer_len);
 
 					if (to_slash_2 != 0)
 					{
 						memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + to_slash_1 + 1, to_slash_2);
-						cur_face->tex = atoi(str_int_buffer) - 1;
+						cur_face->tex = atoi(str_int_buffer) - max_last_tex_idx;
 					}
 
+					memset(str_int_buffer, 0, str_int_buffer_len);
+
 					memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + to_slash_1 + 1 + to_slash_2 + 1, to_end_face);
-					cur_face->nrm = atoi(str_int_buffer) - 1;
+					cur_face->nrm = atoi(str_int_buffer) - max_last_norm_idx;
 
 					data_pos += to_slash_1 + 1 + to_slash_2 + 1 + to_end_face;
 				}
@@ -501,6 +513,7 @@ namespace obj
 					for (uti::u32 j = 0; j < num_faces; ++j)
 					{
 						auto cur_face = faces[j];
+
 						float* cur_pos = positions + cur_face.pos * num_vertex_element_vals;
 						float* cur_tex = texcoords + cur_face.tex * num_vertex_element_vals;
 						float* cur_nrm = normals + cur_face.nrm * num_vertex_element_vals;
@@ -597,6 +610,10 @@ namespace obj
 			positions_offset = num_positions;
 
 			doc->objects[i].has_texcoords = num_texcoords > 0;
+
+			max_last_pos_idx  += num_positions;
+			max_last_tex_idx  += num_texcoords;
+			max_last_norm_idx += num_normals;
 
 			num_positions = 0;
 			num_normals = 0;
