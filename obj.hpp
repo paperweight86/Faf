@@ -4,6 +4,10 @@
 #define MAX_OBJ_MTL_INC 256
 #define OBJ_COMMENT '#'
 
+#ifndef TAT_WINDOWS
+	#define memcpy_s(s,ss,d,ds) memcpy(s,d,ds)
+#endif // TAT_WINDOWS
+
 namespace obj
 {
 	enum primative
@@ -469,13 +473,13 @@ namespace obj
 					}
 
 					size_t to_space = str::find_char(data + data_pos + to_slash_1 + 1 + to_slash_2, ' ', len_data - (data_pos + to_slash_1 + 1 + to_slash_2));
-					to_space = min(to_space, len_data - (data_pos + to_slash_1 + 1 + to_slash_2));
+					to_space = std::min(to_space, len_data - (data_pos + to_slash_1 + 1 + to_slash_2));
 
 					size_t to_line_end = str::find_char(data + data_pos + to_slash_1 + 1 + to_slash_2, '\n', len_data - (data_pos + to_slash_1 + 1 + to_slash_2));
-					to_line_end = min(to_line_end, len_data - (data_pos + to_slash_1 + 1 + to_slash_2));
+					to_line_end = std::min(to_line_end, len_data - (data_pos + to_slash_1 + 1 + to_slash_2));
 
 					uti::u64 to_end_face = to_space < to_line_end ? to_space : to_line_end;
-					to_end_face = min(to_end_face, len_data - (data_pos + to_slash_1 + 1 + to_slash_2));
+					to_end_face = std::min(to_end_face, len_data - (data_pos + to_slash_1 + 1 + to_slash_2));
 
 					if (to_slash_1 != 0)
 					{
