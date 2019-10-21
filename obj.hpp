@@ -1,5 +1,8 @@
 #pragma once
 
+#include <assert.h>
+#include <algorithm>
+
 #define MAX_OBJ_MDL_NAME 256
 #define MAX_OBJ_MTL_INC 256
 #define OBJ_COMMENT '#'
