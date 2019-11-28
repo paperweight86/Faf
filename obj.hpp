@@ -147,9 +147,9 @@ namespace obj
 		// this is space saving but a faff
 		uti::u32 positions_offset = 0;
 
-		uti::u32 max_last_pos_idx	= 1;
-		uti::u32 max_last_tex_idx	= 1;
-		uti::u32 max_last_norm_idx	= 1;
+		uti::i32 max_last_pos_idx	= 1;
+		uti::i32 max_last_tex_idx	= 1;
+		uti::i32 max_last_norm_idx	= 1;
 
 		for (uti::u32 i = 0; i < pos_objects.count; ++i)
 		{
@@ -157,6 +157,8 @@ namespace obj
 			num_faces = 0;
 			vertices_start = 0;
 			faces_start = 0;
+			normals_start = 0;
+			texcoords_start = 0;
 			object* cur_obj = doc->objects+i;
 			cur_obj->primative = primative_none;
 
@@ -172,9 +174,7 @@ namespace obj
 				size_t line_end_off = str::find_char(data + data_pos, '\n', len_data - data_pos);
 				if (line_end_off > len_data || data_pos + line_end_off > len_data)
 				{
-					line_end_off = len_data - data_pos;
-					//data_pos = u32_max;
-					//break;
+					break;
 				}
 				// Go past the \n
 				line_end_off += 1;
@@ -439,7 +439,7 @@ namespace obj
 						if (to_slash_1 == UTI_STR_FIND_NOT_FOUND)
 						{
 							// 1st slash is missing
-							// TODO: [DanJ] Report syntax is wrong / my shitty algorithm can't understand it
+							// TODO: Report syntax is wrong / my shitty algorithm can't understand it
 
 							delete[] positions;
 							delete[] normals;
@@ -451,7 +451,7 @@ namespace obj
 						if (to_slash_1 < to_int)
 						{
 							// Position is missing
-							// TODO: [DanJ] Report syntax is wrong / my shitty algorithm can't understand it
+							// TODO: Report syntax is wrong / my shitty algorithm can't understand it
 
 							delete[] positions;
 							delete[] normals;
@@ -465,7 +465,7 @@ namespace obj
 						if (to_slash_2 == UTI_STR_FIND_NOT_FOUND)
 						{
 							// 2nd slash is missing
-							// TODO: [DanJ] Report syntax is wrong / my shitty algorithm can't understand it
+							// TODO: Report syntax is wrong / my shitty algorithm can't understand it
 
 							delete[] positions;
 							delete[] normals;
@@ -487,7 +487,9 @@ namespace obj
 					if (to_slash_1 != 0)
 					{
 						memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + to_int, to_slash_1 - to_int);
-						cur_face->pos = atoi(str_int_buffer) - max_last_pos_idx;
+						uti::i32 abs_pos_idx = atoi(str_int_buffer);
+						assert(abs_pos_idx >= max_last_pos_idx && abs_pos_idx > 0);
+						cur_face->pos = abs_pos_idx - max_last_pos_idx;
 					}
 
 					memset(str_int_buffer, 0, str_int_buffer_len);
@@ -495,13 +497,17 @@ namespace obj
 					if (to_slash_2 != 0)
 					{
 						memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + to_slash_1 + 1, to_slash_2);
-						cur_face->tex = atoi(str_int_buffer) - max_last_tex_idx;
+						uti::i32 abs_tex_idx = atoi(str_int_buffer);
+						assert(abs_tex_idx >= max_last_tex_idx && abs_tex_idx > 0);
+						cur_face->tex = abs_tex_idx - max_last_tex_idx;
 					}
 
 					memset(str_int_buffer, 0, str_int_buffer_len);
 
 					memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + to_slash_1 + 1 + to_slash_2 + 1, to_end_face);
-					cur_face->nrm = atoi(str_int_buffer) - max_last_norm_idx;
+					uti::i32 abs_nrm_idx = atoi(str_int_buffer);
+					assert(abs_nrm_idx >= max_last_norm_idx && abs_nrm_idx > 0);
+					cur_face->nrm = abs_nrm_idx - max_last_norm_idx;
 
 					data_pos += to_slash_1 + 1 + to_slash_2 + 1 + to_end_face;
 				}
@@ -581,17 +587,20 @@ namespace obj
 
 					cur_obj->indices = new uti::u32[num_faces];
 					cur_obj->num_indices = num_faces;
-					int cur_ver_idx = 0;
+					uti::u32 cur_ver_idx = 0;
 					for (uti::u32 j = 0; j < num_faces; ++j)
 					{
-						auto cur_face = faces[j];
+						face& cur_face = faces[j];
 						float* cur_pos = positions + cur_face.pos * num_vertex_element_vals;
+						assert(cur_face.pos < num_positions);
 						float* cur_tex = texcoords + cur_face.tex * num_vertex_element_vals;
+						assert(cur_face.tex < num_texcoords);
 						float* cur_nrm = normals + cur_face.nrm * num_vertex_element_vals;
+						assert(cur_face.nrm < num_normals);
 
 						cur_obj->indices[j] = cur_ver_idx;
 						uti::u32 offset = cur_ver_idx * num_vertex_element_vals * num_vertex_elements;
-						memcpy_s(cur_obj->vertices + offset, size_vertices - (cur_ver_idx + offset),
+						memcpy_s(cur_obj->vertices + offset, size_vertices - offset,
 							cur_pos, num_vertex_element_vals * sizeof(float));
 						if (num_normals != 0)
 						{
