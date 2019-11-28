@@ -594,7 +594,7 @@ namespace obj
 						float* cur_pos = positions + cur_face.pos * num_vertex_element_vals;
 						assert(cur_face.pos < num_positions);
 						float* cur_tex = texcoords + cur_face.tex * num_vertex_element_vals;
-						assert(cur_face.tex < num_texcoords);
+						assert(num_texcoords == 0 || cur_face.tex < num_texcoords);
 						float* cur_nrm = normals + cur_face.nrm * num_vertex_element_vals;
 						assert(cur_face.nrm < num_normals);
 
