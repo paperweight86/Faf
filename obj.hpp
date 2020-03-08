@@ -3,8 +3,8 @@
 #include <assert.h>
 #include <algorithm>
 
-#define MAX_OBJ_MDL_NAME 256
-#define MAX_OBJ_MTL_INC 256
+#define OBJ_MAX_NAME 256
+#define OBJ_MAX_PATH 256
 #define OBJ_COMMENT '#'
 
 #ifndef TAT_WINDOWS
@@ -28,7 +28,7 @@ namespace obj
 
 	struct object
 	{
-		char			name[MAX_OBJ_MDL_NAME];
+		char			name[OBJ_MAX_NAME];
 
 		float*		vertices;
 		uti::u32	num_vertices;
@@ -38,7 +38,7 @@ namespace obj
 		uti::u32*	indices;
 		uti::u32	num_indices;
 
-		char		material_name[MAX_OBJ_MDL_NAME];
+		char		material_name[OBJ_MAX_NAME];
 		bool		smooth;
 
 		primative   primative;
@@ -46,11 +46,37 @@ namespace obj
 
 	struct document
 	{
-		char*		material_libs[MAX_OBJ_MTL_INC];
+		char		material_lib[OBJ_MAX_PATH];
 		uti::u32	num_material_libs;
 
 		object*		objects;
 		uti::u32	num_objects;
+	};
+
+	enum class e_illum : uti::u8
+	{
+		Color = 0,						//Color on and Ambient off
+		Color_Ambient,					//Color on and Ambient on
+		Color_Ambient_Specular,			//Highlight on
+		Reflection_Raytrace,			//Reflection on and Ray trace on
+		Glass_Raytrace,					//Transparency: Glass on, Reflection : Ray trace on
+		Fresnel_Raytrace,				//Reflection : Fresnel on and Ray trace on
+		Refraction_NoFresnel_Raytrace,	//Transparency : Refraction on, Reflection : Fresnel off and Ray trace on
+		Refraction_Fresnel_Raytrace,	//Transparency : Refraction on, Reflection : Fresnel on and Ray trace on
+		Reflection_NoRaytrace,			//Reflection on and Ray trace off
+		Glass_NoRaytrace,				//Transparency : Glass on, Reflection : Ray trace off
+		Cast_To_Invisible,				//Casts shadows onto invisible surfaces
+	};
+
+	struct material
+	{
+		char	name[OBJ_MAX_NAME];
+		float	diffuse_color[3];
+		float	ambient_color[3];
+		float	specular_color[3];
+		float	emissive_color[3];
+		float	specular_exponent;
+		char	diffuse_texture[OBJ_MAX_PATH];
 	};
 
 	enum line_type : char
@@ -64,6 +90,8 @@ namespace obj
 		line_type_smooth,
 		line_type_face,
 		line_type_line,
+		line_type_material_library,
+		line_type_material,
 	};
 
 	#define OBJ_LINE_RETURN_IF_TYPE(line, type, ret) if(strncmp(line, type, strlen(type)) == 0) return ret
@@ -75,6 +103,8 @@ namespace obj
 	#define OBJ_LINE_SMOOTH		"s "
 	#define OBJ_LINE_FACE		"f "
 	#define OBJ_LINE_LINE		"l "
+	#define OBJ_LINE_MTLLIB		"mtllib "
+	#define OBJ_LINE_MATERIAL	"usemtl "
 
 	line_type determine_line_type(char* line)
 	{
@@ -86,8 +116,178 @@ namespace obj
 		OBJ_LINE_RETURN_IF_TYPE(line, OBJ_LINE_SMOOTH,		line_type_smooth);
 		OBJ_LINE_RETURN_IF_TYPE(line, OBJ_LINE_FACE,		line_type_face);
 		OBJ_LINE_RETURN_IF_TYPE(line, OBJ_LINE_LINE,		line_type_line);
+		OBJ_LINE_RETURN_IF_TYPE(line, OBJ_LINE_MTLLIB,		line_type_material_library);
+		OBJ_LINE_RETURN_IF_TYPE(line, OBJ_LINE_MATERIAL,	line_type_material);
 
 		return line_type_none;
+	}
+
+	enum class mtl_line_type: char
+	{
+		none = 0,
+		comment,
+		name,
+		diffuse_color,
+		ambient_color,
+		specular_color,
+		emissive_color,
+		specular_exponent,
+		diffuse_texture,
+	};
+
+	#define MTL_LINE_COMMENT	"#"
+	#define MTL_LINE_NAME		"newmtl"
+	#define MTL_LINE_DIFFUSE	"Kd"
+	#define MTL_LINE_AMBIENT	"Ka"
+	#define MTL_LINE_SPECULAR	"Ks"
+	#define MTL_LINE_EMISSIVE	"Ke"
+	#define MTL_LINE_SPECEXP	"Ns"
+	#define MTL_LINE_DIFFTEX	"map_Kd"
+
+	mtl_line_type determine_line_type_mtl(char* line)
+	{
+		OBJ_LINE_RETURN_IF_TYPE(line, MTL_LINE_COMMENT	, mtl_line_type::comment			);
+		OBJ_LINE_RETURN_IF_TYPE(line, MTL_LINE_NAME		, mtl_line_type::name				);
+		OBJ_LINE_RETURN_IF_TYPE(line, MTL_LINE_DIFFUSE	, mtl_line_type::diffuse_color		);
+		OBJ_LINE_RETURN_IF_TYPE(line, MTL_LINE_AMBIENT	, mtl_line_type::ambient_color		);
+		OBJ_LINE_RETURN_IF_TYPE(line, MTL_LINE_SPECULAR	, mtl_line_type::specular_color		);
+		OBJ_LINE_RETURN_IF_TYPE(line, MTL_LINE_EMISSIVE	, mtl_line_type::emissive_color		);
+		OBJ_LINE_RETURN_IF_TYPE(line, MTL_LINE_SPECEXP	, mtl_line_type::specular_exponent	);
+		OBJ_LINE_RETURN_IF_TYPE(line, MTL_LINE_DIFFTEX	, mtl_line_type::diffuse_texture	);
+
+		return mtl_line_type::none;
+	}
+
+	// There's a bunch of gotos in here as I've never tried using them so I wanted to see (for this case) how they fit
+	bool load_mtl(char* data, uti::u64 len_data, material** materials_out, uti::u64* num_materials_out)
+	{
+		uti::u64 data_pos = 0;
+		mtl_line_type cur_line_type = mtl_line_type::none;
+		uti::rearray<uti::u64> pos_materials;
+
+		while (data_pos < len_data)
+		{
+			size_t line_end_off = str::find_char(data + data_pos, '\n', len_data - data_pos);
+			if (line_end_off > len_data || data_pos + line_end_off > len_data)
+			{
+				line_end_off = len_data - data_pos;
+			}
+
+			// Go past the \n
+			line_end_off += 1;
+			//assert(line_end_off >= 2);
+			cur_line_type = determine_line_type_mtl(data + data_pos);
+			switch (cur_line_type)
+			{
+			case mtl_line_type::name:
+				pos_materials.add_end(data_pos);
+				break;
+			default:
+				break;
+			}
+			data_pos += line_end_off;
+		}
+
+		*materials_out = new material[pos_materials.count];
+
+		const int float_buffer_len = 32;
+		char float_buffer[float_buffer_len] = {};
+		size_t off_to_float = 0;
+		size_t off_to_end_float = 0;
+
+		for (uti::i64 i = 0; i < pos_materials.count; ++i)
+		{
+			material* cur_mat = &(*materials_out)[i];
+			data_pos = pos_materials[i];
+
+			size_t line_end_off = str::find_char(data + data_pos, '\n', len_data - data_pos);
+			if (line_end_off > len_data || data_pos + line_end_off > len_data)
+			{
+				line_end_off = len_data - data_pos;
+			}
+
+			// Go past the \n
+			line_end_off += 1;
+
+			//assert(line_end_off >= 2);
+			cur_line_type = determine_line_type_mtl(data + data_pos);
+
+			uti::i64 idx = 0;
+			float* cur_colour = nullptr;
+
+			size_t sub_off = 0;
+
+			using type = mtl_line_type;
+			switch (cur_line_type)
+			{
+				case type::comment:
+					break;
+				case type::name:
+					memcpy_s(cur_mat->name, OBJ_MAX_NAME,
+						data + data_pos + 2, line_end_off - 1 - 2);
+					data_pos += line_end_off;
+					break;
+				case type::diffuse_color:
+					cur_colour = &cur_mat->diffuse_color[0];
+					goto dothreefloatread;
+				case type::ambient_color:
+					cur_colour = &cur_mat->ambient_color[0];
+					goto dothreefloatread;
+					break;
+				case type::specular_color:
+					cur_colour = &cur_mat->specular_color[0];
+					goto dothreefloatread;
+					break;
+				case type::emissive_color:
+					cur_colour = &cur_mat->emissive_color[0];
+					goto dothreefloatread;
+					break;
+				case type::specular_exponent:
+					cur_colour = &cur_mat->emissive_color[0];
+					goto doonefloatread;
+					break;
+				case type::diffuse_texture:
+					memcpy_s(cur_mat->diffuse_texture, OBJ_MAX_PATH,
+						data + data_pos + 2, line_end_off - 1 - 2);
+					data_pos += line_end_off;
+					break;
+				default:
+					break;
+			}
+			
+			goto end;
+			
+			dothreefloatread:
+				assert(cur_colour != nullptr);
+				off_to_float = str::strOffToNextFloat(data + data_pos + sub_off);
+				off_to_end_float = str::strOffToEndFloat(data + data_pos + sub_off + off_to_float);
+				memcpy_s(float_buffer, float_buffer_len, data + data_pos + sub_off + off_to_float, off_to_end_float);
+				cur_colour[++idx] = (float)atof(float_buffer);
+
+				sub_off += off_to_float + off_to_end_float;
+				memset(float_buffer, 0, float_buffer_len);
+
+				off_to_float = str::strOffToNextFloat(data + data_pos + sub_off);
+				off_to_end_float = str::strOffToEndFloat(data + data_pos + sub_off + off_to_float);
+				memcpy_s(float_buffer, float_buffer_len, data + data_pos + sub_off + off_to_float, off_to_end_float);
+				cur_colour[++idx] = (float)atof(float_buffer);
+
+				sub_off += off_to_float + off_to_end_float;
+				memset(float_buffer, 0, float_buffer_len);
+
+			doonefloatread:
+				assert(cur_colour != nullptr);
+				off_to_float = str::strOffToNextFloat(data + data_pos + sub_off);
+				off_to_end_float = str::strOffToEndFloat(data + data_pos + sub_off + off_to_float);
+				memcpy_s(float_buffer, float_buffer_len, data + data_pos + sub_off + off_to_float, off_to_end_float);
+				cur_colour[++idx] = (float)atof(float_buffer);
+
+			end:
+
+			data_pos += line_end_off;
+		}
+
+		return true;
 	}
 
 	bool load_obj(char* data, uti::u64 len_data, document* doc)
@@ -183,7 +383,7 @@ namespace obj
 				switch (cur_line_type)
 				{
 				case line_type_object:
-					memcpy_s(cur_obj->name,		  MAX_OBJ_MDL_NAME,
+					memcpy_s(cur_obj->name,		  OBJ_MAX_NAME,
 							 data + data_pos + 2, line_end_off-1-2);
 					data_pos += line_end_off;
 					break;
@@ -246,6 +446,20 @@ namespace obj
 						if (strncmp("off", data + data_pos + start_smooth_off, 3) == 0)
 							smooth = false;
 					}
+					data_pos += line_end_off;
+					break;
+				}
+				case line_type_material_library:
+				{
+					memcpy_s(doc->material_lib, OBJ_MAX_PATH,
+						data + data_pos + 2, line_end_off - 1 - 2);
+					data_pos += line_end_off;
+					break;
+				}
+				case line_type_material:
+				{
+					memcpy_s(cur_obj->material_name, OBJ_MAX_NAME,
+						data + data_pos + 2, line_end_off - 1 - 2);
 					data_pos += line_end_off;
 					break;
 				}
@@ -429,9 +643,9 @@ namespace obj
 					const int str_int_buffer_len = 32;
 					char str_int_buffer[str_int_buffer_len] = {};
 					face* cur_face = faces + j;
-					size_t to_int = str::strOffToNextFloat(data + data_pos);
-					size_t to_slash_1 = 0;
-					size_t to_slash_2 = 0;
+					uti::i64 to_int = str::strOffToNextFloat(data + data_pos);
+					uti::i64 to_slash_1 = 0;
+					uti::i64 to_slash_2 = 0;
 					if (num_vertex_elements > 1)
 					{
 						to_slash_1 = str::find_char(data + data_pos, '/', len_data - data_pos);
