@@ -44,15 +44,6 @@ namespace obj
 		primative   primative;
 	};
 
-	struct document
-	{
-		char		material_lib[OBJ_MAX_PATH];
-		uti::u32	num_material_libs;
-
-		object*		objects;
-		uti::u32	num_objects;
-	};
-
 	enum class e_illum : uti::u8
 	{
 		Color = 0,						//Color on and Ambient off
@@ -77,6 +68,17 @@ namespace obj
 		float	emissive_color[3];
 		float	specular_exponent;
 		char	diffuse_texture[OBJ_MAX_PATH];
+	};
+
+	struct document
+	{
+		char		material_lib[OBJ_MAX_PATH];
+
+		object*		objects;
+		uti::u32	num_objects;
+
+		material*	materials;
+		uti::u32	num_materials;
 	};
 
 	enum line_type : char
@@ -136,13 +138,13 @@ namespace obj
 	};
 
 	#define MTL_LINE_COMMENT	"#"
-	#define MTL_LINE_NAME		"newmtl"
-	#define MTL_LINE_DIFFUSE	"Kd"
-	#define MTL_LINE_AMBIENT	"Ka"
-	#define MTL_LINE_SPECULAR	"Ks"
-	#define MTL_LINE_EMISSIVE	"Ke"
-	#define MTL_LINE_SPECEXP	"Ns"
-	#define MTL_LINE_DIFFTEX	"map_Kd"
+	#define MTL_LINE_NAME		"newmtl "
+	#define MTL_LINE_DIFFUSE	"Kd "
+	#define MTL_LINE_AMBIENT	"Ka "
+	#define MTL_LINE_SPECULAR	"Ks "
+	#define MTL_LINE_EMISSIVE	"Ke "
+	#define MTL_LINE_SPECEXP	"Ns "
+	#define MTL_LINE_DIFFTEX	"map_Kd "
 
 	mtl_line_type determine_line_type_mtl(char* line)
 	{
@@ -159,7 +161,7 @@ namespace obj
 	}
 
 	// There's a bunch of gotos in here as I've never tried using them so I wanted to see (for this case) how they fit
-	bool load_mtl(char* data, uti::u64 len_data, material** materials_out, uti::u64* num_materials_out)
+	bool load_material_library(char* data, uti::u64 len_data, material** materials_out, uti::u32* num_materials_out)
 	{
 		uti::u64 data_pos = 0;
 		mtl_line_type cur_line_type = mtl_line_type::none;
@@ -189,6 +191,8 @@ namespace obj
 		}
 
 		*materials_out = new material[pos_materials.count];
+		memset(&(*materials_out)[0], 0, sizeof(material) * pos_materials.count);
+		*num_materials_out = pos_materials.count;
 
 		const int float_buffer_len = 32;
 		char float_buffer[float_buffer_len] = {};
@@ -200,32 +204,37 @@ namespace obj
 			material* cur_mat = &(*materials_out)[i];
 			data_pos = pos_materials[i];
 
-			size_t line_end_off = str::find_char(data + data_pos, '\n', len_data - data_pos);
-			if (line_end_off > len_data || data_pos + line_end_off > len_data)
+			uti::u64 pos_next_mtl = len_data;
+			if (i != pos_materials.count - 1)
+				pos_next_mtl = pos_materials[i + 1];
+
+			while (data_pos < pos_next_mtl)
 			{
-				line_end_off = len_data - data_pos;
-			}
+				size_t line_end_off = str::find_char(data + data_pos, '\n', len_data - data_pos);
+				if (line_end_off > len_data || data_pos + line_end_off > len_data)
+				{
+					line_end_off = len_data - data_pos;
+				}
 
-			// Go past the \n
-			line_end_off += 1;
+				// Go past the \n
+				line_end_off += 1;
 
-			//assert(line_end_off >= 2);
-			cur_line_type = determine_line_type_mtl(data + data_pos);
+				//assert(line_end_off >= 2);
+				cur_line_type = determine_line_type_mtl(data + data_pos);
 
-			uti::i64 idx = 0;
-			float* cur_colour = nullptr;
+				uti::i64 idx = 0;
+				float* cur_colour = nullptr;
 
-			size_t sub_off = 0;
+				size_t sub_off = 0;
 
-			using type = mtl_line_type;
-			switch (cur_line_type)
-			{
+				using type = mtl_line_type;
+				switch (cur_line_type)
+				{
 				case type::comment:
 					break;
 				case type::name:
 					memcpy_s(cur_mat->name, OBJ_MAX_NAME,
-						data + data_pos + 2, line_end_off - 1 - 2);
-					data_pos += line_end_off;
+						data + data_pos + strlen(MTL_LINE_NAME), line_end_off - 1 - strlen(MTL_LINE_NAME));
 					break;
 				case type::diffuse_color:
 					cur_colour = &cur_mat->diffuse_color[0];
@@ -248,15 +257,15 @@ namespace obj
 					break;
 				case type::diffuse_texture:
 					memcpy_s(cur_mat->diffuse_texture, OBJ_MAX_PATH,
-						data + data_pos + 2, line_end_off - 1 - 2);
+						data + data_pos + strlen(MTL_LINE_DIFFTEX), line_end_off - 1 - strlen(MTL_LINE_DIFFTEX));
 					data_pos += line_end_off;
 					break;
 				default:
 					break;
-			}
-			
-			goto end;
-			
+				}
+
+				goto end;
+
 			dothreefloatread:
 				assert(cur_colour != nullptr);
 				off_to_float = str::strOffToNextFloat(data + data_pos + sub_off);
@@ -284,7 +293,8 @@ namespace obj
 
 			end:
 
-			data_pos += line_end_off;
+				data_pos += line_end_off;
+			}
 		}
 
 		return true;
@@ -329,8 +339,15 @@ namespace obj
 			switch (cur_line_type)
 			{
 			case line_type_object:
+			{
 				pos_objects.add_end(data_pos);
 				break;
+			}
+			case line_type_material_library:
+			{
+				memcpy_s(doc->material_lib, OBJ_MAX_PATH, data + data_pos + strlen(OBJ_LINE_MTLLIB), line_end_off - 1 - strlen(OBJ_LINE_MTLLIB));
+				break;
+			}
 			default:
 				break;
 			}
@@ -449,17 +466,10 @@ namespace obj
 					data_pos += line_end_off;
 					break;
 				}
-				case line_type_material_library:
-				{
-					memcpy_s(doc->material_lib, OBJ_MAX_PATH,
-						data + data_pos + 2, line_end_off - 1 - 2);
-					data_pos += line_end_off;
-					break;
-				}
 				case line_type_material:
 				{
 					memcpy_s(cur_obj->material_name, OBJ_MAX_NAME,
-						data + data_pos + 2, line_end_off - 1 - 2);
+						data + data_pos + strlen(OBJ_LINE_MATERIAL), line_end_off - 1 - strlen(OBJ_LINE_MATERIAL));
 					data_pos += line_end_off;
 					break;
 				}
@@ -864,6 +874,10 @@ namespace obj
 			doc->objects[i].indices = nullptr;
 			doc->objects[i].num_indices = 0;
 		}
+
+		delete [] doc->materials;
+		doc->materials = nullptr;
+		doc->num_materials = 0;
 
 		delete [] doc->objects;
 		doc->objects = nullptr;
