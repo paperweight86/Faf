@@ -192,7 +192,7 @@ namespace obj
 
 		*materials_out = new material[pos_materials.count];
 		memset(&(*materials_out)[0], 0, sizeof(material) * pos_materials.count);
-		*num_materials_out = pos_materials.count;
+		*num_materials_out = (uti::u32)pos_materials.count;
 
 		const int float_buffer_len = 32;
 		char float_buffer[float_buffer_len] = {};
