@@ -167,18 +167,19 @@ namespace obj
 		mtl_line_type cur_line_type = mtl_line_type::none;
 		uti::rearray<uti::u64> pos_materials;
 
-		while (data_pos < len_data)
+		char* scan_data = data;
+		while (scan_data  - data < len_data)
 		{
-			size_t line_end_off = str::find_char(data + data_pos, '\n', len_data - data_pos);
-			if (line_end_off > len_data || data_pos + line_end_off > len_data)
-			{
-				line_end_off = len_data - data_pos;
-			}
-
-			// Go past the \n
-			line_end_off += 1;
+			//size_t line_end_off = str::find_char(data + data_pos, '\n', len_data - data_pos);
+			//if (line_end_off > len_data || data_pos + line_end_off > len_data)
+			//{
+			//	line_end_off = len_data - data_pos;
+			//}
+			//
+			//// Go past the \n
+			//line_end_off += 1;
 			//assert(line_end_off >= 2);
-			cur_line_type = determine_line_type_mtl(data + data_pos);
+			cur_line_type = determine_line_type_mtl(scan_data);
 			switch (cur_line_type)
 			{
 			case mtl_line_type::name:
@@ -187,7 +188,9 @@ namespace obj
 			default:
 				break;
 			}
-			data_pos += line_end_off;
+			//data_pos += line_end_off;
+			//data_pos += str::find_char(data + data_pos, '\n', len_data - data_pos) + 1;
+			scan_data = str::find_char_ptr(scan_data, '\n', len_data - (scan_data - data)) + 1;
 		}
 
 		*materials_out = new material[pos_materials.count];
@@ -496,91 +499,31 @@ namespace obj
 			normals = new float[num_normals*num_vertex_element_vals];
 
 			data_pos = vertices_start;
+			char* float_start = data + data_pos;
 			for (uti::u32 j = 0; j < num_positions; ++j)
 			{
-				const int float_buffer_len = 32;
-				char float_buffer[float_buffer_len] = {};
 				float* cur_vert = positions + j * 3;
-				size_t off_to_float = str::strOffToNextFloat(data + data_pos);
-				size_t off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
-				memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-				cur_vert[0] = (float)atof(float_buffer);
-
-				data_pos += off_to_float + off_to_end_float;
-				memset(float_buffer, 0, float_buffer_len);
-
-				off_to_float = str::strOffToNextFloat(data + data_pos);
-				off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
-				memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-				cur_vert[1] = (float)atof(float_buffer);
-
-				data_pos += off_to_float + off_to_end_float;
-
-				off_to_float = str::strOffToNextFloat(data + data_pos);
-				off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
-				memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-				cur_vert[2] = (float)atof(float_buffer);
-
-				data_pos += off_to_float + off_to_end_float;
+				str::read_floats(float_start, uti::min((uti::u64)(32 * 3), len_data - data_pos), cur_vert, 3, &float_start);
 			}
 
 			data_pos = normals_start;
+			float_start = data + data_pos;
 			for (uti::u32 j = 0; j < num_normals; ++j)
 			{
-				const int float_buffer_len = 32;
-				char float_buffer[float_buffer_len] = {};
-				float* cur_norm = normals + j * 3;
-				size_t off_to_float = str::strOffToNextFloat(data + data_pos);
-				size_t off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
-				memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-				cur_norm[0] = (float)atof(float_buffer);
-
-				data_pos += off_to_float + off_to_end_float;
-				memset(float_buffer, 0, float_buffer_len);
-
-				off_to_float = str::strOffToNextFloat(data + data_pos);
-				off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
-				memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-				cur_norm[1] = (float)atof(float_buffer);
-
-				data_pos += off_to_float + off_to_end_float;
-
-				off_to_float = str::strOffToNextFloat(data + data_pos);
-				off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
-				memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-				cur_norm[2] = (float)atof(float_buffer);
-
-				data_pos += off_to_float + off_to_end_float;
+				float* cur_vert = normals + j * 3;
+				str::read_floats(float_start, uti::min((uti::u64)(32 * 3), len_data - data_pos), cur_vert, 3, &float_start);
 			}
 
 			data_pos = texcoords_start;
+			float_start = data + texcoords_start;
 			for (uti::u32 j = 0; j < num_texcoords; ++j)
 			{
-				const int float_buffer_len = 32;
-				char float_buffer[float_buffer_len] = {};
-				float* cur_tex = texcoords + j * 3;
-				size_t off_to_float = str::strOffToNextFloat(data + data_pos);
-				size_t off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
-				memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-				cur_tex[0] = (float)atof(float_buffer);
-
-				data_pos += off_to_float + off_to_end_float;
-				memset(float_buffer, 0, float_buffer_len);
-
-				off_to_float = str::strOffToNextFloat(data + data_pos);
-				off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
-				memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-				cur_tex[1] = (float)atof(float_buffer);
-
-				data_pos += off_to_float + off_to_end_float;
-
-				//off_to_float = str::strOffToNextFloat(data + data_pos);
-				//off_to_end_float = str::strOffToEndFloat(data + data_pos + off_to_float);
-				//memcpy_s(float_buffer, float_buffer_len, data + data_pos + off_to_float, off_to_end_float);
-				cur_tex[2] = 0.0f;
-
-				//data_pos += off_to_float + off_to_end_float;
+				float* cur_vert = texcoords + j * 3;
+				str::read_floats(float_start, uti::min((uti::u64)(32 * 2), len_data - data_pos), cur_vert, 2, &float_start);
+				cur_vert[2] = 0.0f;
 			}
+
+			data_pos = float_start - data;
 
 			if (cur_obj->primative == primative_line)
 			{
@@ -708,30 +651,27 @@ namespace obj
 					uti::u64 to_end_face = to_space < to_line_end ? to_space : to_line_end;
 					to_end_face = std::min(to_end_face, len_data - (data_pos + to_slash_1 + 1 + to_slash_2));
 
-					if (to_slash_1 != 0)
+					constexpr uti::i64 max_num_indicies_face = 3;
+					uti::u32 indicies [max_num_indicies_face];
+					uti::i64 num_face_floats_read = str::read_any_u32(data + data_pos, to_slash_1 + 1 + to_slash_2 + 1 + to_end_face, &indicies[0], max_num_indicies_face, nullptr);
+
+					if (num_face_floats_read == max_num_indicies_face - 1)
 					{
-						memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + to_int, to_slash_1 - to_int);
-						uti::i32 abs_pos_idx = atoi(str_int_buffer);
-						assert(abs_pos_idx >= max_last_pos_idx && abs_pos_idx > 0);
-						cur_face->pos = abs_pos_idx - max_last_pos_idx;
+						// no tex cooord
+						cur_face->pos = indicies[0] - max_last_pos_idx;
+						cur_face->nrm = indicies[1] - max_last_norm_idx;
 					}
-
-					memset(str_int_buffer, 0, str_int_buffer_len);
-
-					if (to_slash_2 != 0)
+					else if(num_face_floats_read == max_num_indicies_face)
 					{
-						memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + to_slash_1 + 1, to_slash_2);
-						uti::i32 abs_tex_idx = atoi(str_int_buffer);
-						assert(abs_tex_idx >= max_last_tex_idx && abs_tex_idx > 0);
-						cur_face->tex = abs_tex_idx - max_last_tex_idx;
+						// with tex cooord
+						cur_face->pos = indicies[0] - max_last_pos_idx;
+						cur_face->tex = indicies[1] - max_last_tex_idx;
+						cur_face->nrm = indicies[2] - max_last_norm_idx;
 					}
-
-					memset(str_int_buffer, 0, str_int_buffer_len);
-
-					memcpy_s(str_int_buffer, str_int_buffer_len, data + data_pos + to_slash_1 + 1 + to_slash_2 + 1, to_end_face);
-					uti::i32 abs_nrm_idx = atoi(str_int_buffer);
-					assert(abs_nrm_idx >= max_last_norm_idx && abs_nrm_idx > 0);
-					cur_face->nrm = abs_nrm_idx - max_last_norm_idx;
+					else
+					{
+						assert(cur_face->nrm < num_normals);
+					}
 
 					data_pos += to_slash_1 + 1 + to_slash_2 + 1 + to_end_face;
 				}
